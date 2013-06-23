@@ -1,15 +1,73 @@
 require 'net/http'
 require 'uri'
-require 'rexml/document'
+require 'xmlsimple'
+require 'json'
+require 'pry'
 
-onion_uri = URI.parse('http://feeds.theonion.com/theonion/daily')
+def get_rss(url)
+    # Fetches an RSS feed from the URL
+    # Returns it as a Ruby object
+    uri = URI.parse(url)
+    rss = Net::HTTP.get_response(uri).body
+    # Convert XML to a Ruby hash
+    XmlSimple.xml_in(rss)
+end
 
-# Shortcut
-response = Net::HTTP.get_response(onion_uri)
+def parse_headlines(url, title_field, link_field)
+    # Parses headlines with links from the URL of an RSS feed
+    # When passing the link_field, you may pass a field that begins with an HTML link to the headline or a field with only the URL
+    # Returns a an array of hashes each with a headline and url key
+    data = get_rss(url)
 
-# Will print response.body
-Net::HTTP.get_print(uri)
+    new_items = []
 
-# Full
-http = Net::HTTP.new(uri.host, uri.port)
-response = http.request(Net::HTTP::Get.new(uri.request_uri))
+    # Iterate through the XML returned from the feed
+    data['channel'][0]['item'].each_with_index do |item, index|
+        item.each do |k, v|
+            # Pull out the title and link fields
+            if [title_field, link_field].include? k
+                # Create a new hash inside the array unless it exists
+                new_items.insert(index, {}) unless new_items[index]
+                # Add the title or URL to the hash at the current index
+                new_items[index].merge!(:title => v[0]) if k == title_field
+                if k == link_field && v[0].match(/^<a\shref=/)
+                    new_items[index].merge!(:url => v[0].match(/"(http:\/\/.*)"/)[1])
+                elsif k == link_field
+                    new_items[index].merge!(:url => v[0]) if k == link_field
+                end
+
+            end
+        end
+    end
+    new_items
+end
+
+def load_headlines_json(file)
+    # Loads a JSON file
+    # Returns a Ruby object of the file's contents
+    JSON.parse(IO.read(file))['headlines']
+end
+
+def add_onion_value!(object, onion)
+    # Pass the object and a boolean for 'onion'
+    # Modifies the object in place adding the boolean passed as the 'onion' hash key
+    object.each do |headline|
+        headline.merge!(:onion => onion)
+    end
+end
+
+def save_headlines_json!(object, file)
+    # Dumps a JSON string of an object and writes it to a file
+
+    # Add 'headlines' to the top level of the hash
+    object = {:headlines => object}
+    IO.write(file, JSON.dump(object))
+end
+
+def merge_headlines(*headlines_objects)
+    # Merges multiple headlines objects insuring values are unique
+    headlines_objects.inject(:+).inject([]) {|result,h| result << h unless result.include?(h); result }
+end
+
+onion = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+not_onion = parse_headlines('http://onionlike.tumblr.com/rss', 'title', 'description')
