@@ -69,5 +69,10 @@ def merge_headlines(*headlines_objects)
     headlines_objects.inject(:+).inject([]) {|result,h| result << h unless result.include?(h); result }
 end
 
-onion = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+onion1 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+onion2 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+onion3 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+
 not_onion = parse_headlines('http://onionlike.tumblr.com/rss', 'title', 'description')
+
+binding.pry
