@@ -69,10 +69,39 @@ def merge_headlines(*headlines_objects)
     headlines_objects.inject(:+).inject([]) {|result,h| result << h unless result.include?(h); result }
 end
 
-onion1 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
-onion2 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
-onion3 = parse_headlines('http://feeds.theonion.com/theonion/daily?fmt=xml', 'title', 'origLink')
+# App interface
+all = []
+while true do
+    print "Feed URL (leave blank if done): "
+    $stdout.flush
+    url = gets.chomp
 
-not_onion = parse_headlines('http://onionlike.tumblr.com/rss', 'title', 'description')
+    if url == ""
+        break
+    else
+        print "Headline title field: "
+        $stdout.flush
+        title_field = gets.chomp
+        print "Link field: "
+        $stdout.flush
+        link_field = gets.chomp
+        puts "Fetching headlines..."
+        feed = parse_headlines(url, title_field, link_field)
+        print "Onion stories? ('true' or 'false'): "
+        $stdout.flush
+        onion = gets.chomp
+        add_onion_value!(feed, onion)
+        all << feed
+    end
+end
 
-binding.pry
+print "Path of JSON file to merge (blank for none): "
+$stdout.flush
+other_file = gets.chomp
+other_file = load_headlines_json(other_file) unless other_file == ""
+all << other_file unless other_file == ""
+print "Path and filename for output: "
+$stdout.flush
+output = gets.chomp
+save_headlines_json!(merge_headlines(*all), output)
+puts "File #{output} saved."
